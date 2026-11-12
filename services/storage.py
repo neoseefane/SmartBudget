@@ -1,4 +1,5 @@
 import sqlite3
+from contextlib import contextmanager
 from datetime import date
 from pathlib import Path
 from models.budget import Budget
@@ -14,10 +15,20 @@ class StorageService:
         self.create_tables()
         self._seed_demo_data()
 
+    @contextmanager
     def _connect(self):
+        """Open a database connection and always close the connection."""
         connection = sqlite3.connect(self.database_path)
         connection.row_factory = sqlite3.Row
-        return connection
+
+        try:
+            yield connection
+            connection.commit()
+        except Exception:
+            connection.rollback()
+            raise
+        finally:
+            connection.close()
 
     def create_tables(self):
         with self._connect() as connection:
